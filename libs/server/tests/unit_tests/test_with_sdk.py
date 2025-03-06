@@ -323,3 +323,78 @@ async def test_call_tool_with_injected() -> None:
             await client.tools.call("does_not_exist", {})
 
         assert exception_info.value.response.status_code == 401
+
+
+async def test_exposing_existing_langchain_tools() -> None:
+    """Test exposing existing langchain tools."""
+    from langchain_core.tools import StructuredTool, tool
+
+    @tool
+    def say_hello_sync() -> str:
+        """Say hello."""
+        return "Hello"
+
+    @tool
+    async def say_hello_async() -> str:
+        """Say hello."""
+        return "Hello"
+
+    def multiply(a: int, b: int) -> int:
+        """Multiply two numbers."""
+        return a * b
+
+    async def amultiply(a: int, b: int) -> int:
+        """Multiply two numbers."""
+        return a * b
+
+    calculator = StructuredTool.from_function(func=multiply, coroutine=amultiply)
+
+    server = Server()
+    auth = Auth()
+    server.add_auth(auth)
+
+    @auth.authenticate
+    async def authenticate(headers: dict) -> dict:
+        """Authenticate incoming requests."""
+        api_key = headers.get(b"x-api-key")
+
+        api_key_to_user = {
+            b"1": {"permissions": ["group1"], "identity": "some-user"},
+        }
+
+        if not api_key or api_key not in api_key_to_user:
+            raise auth.exceptions.HTTPException(detail="Not authorized")
+
+        return api_key_to_user[api_key]
+
+    server.tool(say_hello_sync, permissions=["group1"])
+    server.tool(say_hello_async, permissions=["group1"])
+    server.tool(calculator, permissions=["group1"])
+
+    async with get_async_test_client(server, headers={"x-api-key": "1"}) as client:
+        tools = await client.tools.list()
+        assert tools == [
+            {
+                "description": "Say hello.",
+                "inputSchema": {"properties": {}, "type": "object"},
+                "name": "say_hello_sync",
+            },
+            {
+                "description": "Say hello.",
+                "inputSchema": {"properties": {}, "type": "object"},
+                "name": "say_hello_async",
+            },
+            {
+                "description": "Multiply two numbers.",
+                "inputSchema": {
+                    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                    "required": ["a", "b"],
+                    "type": "object",
+                },
+                "name": "multiply",
+            },
+        ]
+
+        assert await client.tools.call("say_hello_sync", {}) == "Hello"
+        assert await client.tools.call("say_hello_async", {}) == "Hello"
+        assert await client.tools.call("multiply", {"a": 2, "b": 3}) == 6
