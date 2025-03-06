@@ -2,7 +2,7 @@
 name = "open-tool-server"
 version = "0.0.1"
 description = "Open Tool Server (Python)"
-readme = "../../README.md"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110.0",
@@ -26,6 +26,10 @@ test = [
     "pytest-timeout>=2.3.1",
     "ruff>=0.9.7",
 ]
+
+[project.urls]
+repository = "https://github.com/langchain-ai/open-tool-server"
+
 
 [tool.pytest.ini_options]
 minversion = "8.0"
