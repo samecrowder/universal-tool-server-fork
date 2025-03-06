@@ -13,7 +13,7 @@ Users working in a local environment that need MCP, [can enable MCP support](#MC
 - 📡 **Simple REST Protocol**: Leverage a straightforward REST API.
 - 🔐 **Built-In Authentication**: Out-of-the-box auth support, ensuring only authorized users can access tools.
 - 🛠️ **Decoupled Tool Creation**: In an enterprise setting, decouple the creation of specialized tools (like data retrieval from specific knowledge sources) from the agent configuration.
-- ⚙️ **Works with existing LangChain tools**: Expose existing LangChain tools to the web with minimal effort.
+- ⚙️ **Works with LangChain tools**: You can integrate existing LangChain tools with minimal effort.
 
 ## Installation
 
@@ -130,6 +130,35 @@ If you need a synchronous client, you can use the `get_sync_client` function.
 ```python
 from open_tool_client import get_sync_client
 ```
+
+
+### Using Existing LangChain Tools
+
+If you have existing LangChain tools, you can expose them via the API by using the `Server.tool`
+method which will add the tool to the server.
+
+This also gives you the option to add Authentication to an existing LangChain tool.
+
+```python
+from open_tool_server import Server
+from langchain_core.tools import tool
+
+app = Server()
+
+# Say you have some existing langchain tool
+@tool()
+async def say_hello() -> str:
+    """Say hello."""
+    return "Hello"
+
+# This is how you expose it via the API
+app.tool(
+    say_hello,
+    # You can include permissions if you're setting up Auth
+    permissions=["group2"]
+)
+```
+
 
 ### React Agent
 
