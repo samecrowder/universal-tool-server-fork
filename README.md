@@ -349,3 +349,10 @@ async def authenticate(headers: dict[bytes, bytes]) -> dict:
     } 
 ```
 
+
+## Awesome Servers
+
+* LangChain's [example tool server](https://github.com/langchain-ai/example-tool-server) with example tool to access github, hackernews, reddit.
+
+
+Would like to contribute your server to this list? Open a PR!
