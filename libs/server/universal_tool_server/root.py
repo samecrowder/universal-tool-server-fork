@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from typing_extensions import TypedDict
 
-from open_tool_server._version import __version__
+from universal_tool_server._version import __version__
 
 
 class InfoResponse(TypedDict):
@@ -41,7 +41,7 @@ def get_info() -> InfoResponse:
     return {"version": __version__}
 
 
-@router.get("/ok")
-def ok() -> str:
+@router.get("/health")
+def health() -> dict:
     """Are we OK?"""
-    return "OK"
+    return {"status": "OK"}
