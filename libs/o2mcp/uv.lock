@@ -394,13 +394,14 @@ wheels = [
 
 [[package]]
 name = "o2mcp"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "mcp" },
     { name = "orjson" },
     { name = "universal-tool-client" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -420,6 +421,7 @@ requires-dist = [
     { name = "mcp", specifier = ">=1.4.1" },
     { name = "orjson", specifier = ">=3.10.1" },
     { name = "universal-tool-client", specifier = ">=0.0.2" },
+    { name = "uvicorn", specifier = ">=0.20.0" },
 ]
 
 [package.metadata.requires-dev]
