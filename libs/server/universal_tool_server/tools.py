@@ -62,7 +62,7 @@ class RegisteredTool(TypedDict):
 def _is_allowed(
     tool: RegisteredTool, request: Request | None, auth_enabled: bool
 ) -> bool:
-    """Check if the requequest has required permissions to see / use the tool."""
+    """Check if the request has required permissions to see / use the tool."""
     required_permissions = tool["permissions"]
 
     # If tool requests Request object, but one is not provided, then the tool is not
