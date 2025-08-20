@@ -23,8 +23,8 @@ def create_fixed_mcp_app(tool_handler: ToolHandler) -> Starlette:
     from mcp.types import Tool
     from universal_tool_server.mcp import _convert_to_content, CallToolRequest
 
-    # Use relative path for SSE transport - this fixes the double /mcp issue
-    sse = SseServerTransport("/messages/")
+    # Use relative path for SSE transport within the MCP mount
+    sse = SseServerTransport("/mcp/messages/")
     server = MCPServer(name="MCP Server")
 
     @server.list_tools()

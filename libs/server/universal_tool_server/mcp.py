@@ -4,9 +4,8 @@ import json
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Sequence
 
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.routing import Mount, Route
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from universal_tool_server.tools import CallToolRequest, ToolHandler
 
@@ -47,73 +46,144 @@ def _convert_to_content(
     return [TextContent(type="text", text=result)]
 
 
-def create_mcp_app(tool_handler: ToolHandler) -> Starlette:
-    """Create a Starlette app for an MCP server."""
-    from mcp.server.lowlevel import Server as MCPServer
-    from mcp.server.sse import SseServerTransport
-    from mcp.types import Tool
+def create_mcp_router(tool_handler: ToolHandler) -> APIRouter:
+    """Create a FastAPI router for MCP endpoints."""
+    
+    router = APIRouter()
 
-    sse = SseServerTransport(f"{MCP_APP_PREFIX}/messages/")
-    server = MCPServer(name="MCP Server")
+    @router.get("")
+    async def mcp_get_handler():
+        """Handle GET requests to MCP root - capabilities endpoint"""
+        return JSONResponse({
+            "jsonrpc": "2.0", 
+            "result": {
+                "capabilities": {
+                    "tools": {}
+                }
+            }
+        })
 
-    @server.list_tools()
-    async def list_tools() -> list[Tool]:
-        """List available tools."""
-        # The original request object is not currently available in the MCP server.
-        # We'll send a None for the request object.
-        # This means that if Auth is enabled, the MCP endpoint will not
-        # list any tools that require authentication.
+    @router.post("")
+    async def mcp_post_handler(request: Request):
+        """Handle POST requests - MCP JSON-RPC messages"""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32700,
+                    "message": "Parse error"
+                }
+            }, status_code=400)
 
-        tools = []
+        method = body.get("method")
+        request_id = body.get("id")
 
-        for tool in await tool_handler.list_tools(request=None):
-            # MCP has no concept of tool versions, so we'll only
-            # return the latest version.
-            if tool_handler.latest_version[tool["name"]]["id"] != tool["id"]:
-                continue
+        if method == "initialize":
+            # Handle MCP initialization
+            return JSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "Universal Tool Server",
+                        "version": "1.0.0"
+                    }
+                }
+            })
 
-            tools.append(
-                Tool(
-                    name=tool["name"],
-                    description=tool["description"],
-                    inputSchema=tool["input_schema"],
-                )
-            )
+        elif method == "notifications/initialized":
+            # Handle initialization notification (no response needed)
+            return JSONResponse({"jsonrpc": "2.0"})
 
-        return tools
+        elif method == "tools/list":
+            # Return list of available tools
+            tools_list = []
+            
+            # Get tools from the tool handler
+            tools = await tool_handler.list_tools(request=None)
+            
+            for tool in tools:
+                # Only return latest version of each tool
+                if tool_handler.latest_version[tool["name"]]["id"] == tool["id"]:
+                    tools_list.append({
+                        "name": tool["name"],
+                        "description": tool["description"],
+                        "inputSchema": tool["input_schema"]
+                    })
 
-    @server.call_tool()
-    async def call_tool(
-        name: str, arguments: dict[str, Any]
-    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-        """Call a tool by name with arguments."""
-        # The original request object is not currently available in the MCP server.
-        # We'll send a None for the request object.
-        # This means that if Auth is enabled, the MCP endpoint will not
-        # list any tools that require authentication.
-        call_tool_request: CallToolRequest = {
-            "tool_id": name,
-            "input": arguments,
-        }
-        response = await tool_handler.call_tool(call_tool_request, request=None)
-        if not response["success"]:
-            raise NotImplementedError(
-                "Support for error messages is not yet implemented."
-            )
-        return _convert_to_content(response["value"])
+            return JSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "tools": tools_list
+                }
+            })
 
-    async def handle_sse(request: Request):
-        async with sse.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await server.run(
-                streams[0], streams[1], server.create_initialization_options()
-            )
+        elif method == "tools/call":
+            # Execute tool
+            params = body.get("params", {})
+            tool_name = params.get("name")
+            arguments = params.get("arguments", {})
 
-    starlette_app = Starlette(
-        routes=[
-            Route("/sse", endpoint=handle_sse),
-            Mount("/messages/", app=sse.handle_post_message),
-        ],
-    )
-    return starlette_app
+            try:
+                # Call the tool using the tool handler
+                call_tool_request: CallToolRequest = {
+                    "tool_id": tool_name,
+                    "input": arguments,
+                }
+                response = await tool_handler.call_tool(call_tool_request, request=None)
+                
+                if not response["success"]:
+                    return JSONResponse({
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32603,
+                            "message": f"Tool execution failed: {response.get('error', 'Unknown error')}"
+                        }
+                    })
+
+                # Convert result to MCP content format
+                content_items = _convert_to_content(response["value"])
+                
+                return JSONResponse({
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "content": [
+                            {
+                                "type": item.type,
+                                "text": item.text
+                            }
+                            for item in content_items
+                        ]
+                    }
+                })
+
+            except Exception as e:
+                return JSONResponse({
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32603,
+                        "message": f"Tool execution failed: {str(e)}"
+                    }
+                })
+
+        else:
+            return JSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {method}"
+                }
+            }, status_code=400)
+    
+    return router
