@@ -68,9 +68,9 @@ class Server:
         if enable_mcp:
             from universal_tool_server.mcp import create_mcp_router
 
-            # Include the MCP router directly to avoid redirect issues
+            # Include the MCP router without prefix - routes are defined as /mcp directly
             mcp_router = create_mcp_router(self.tool_handler)
-            self.app.include_router(mcp_router, prefix="/mcp")
+            self.app.include_router(mcp_router)
 
     @overload
     def add_tool(

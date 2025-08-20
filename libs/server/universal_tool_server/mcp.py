@@ -51,7 +51,7 @@ def create_mcp_router(tool_handler: ToolHandler) -> APIRouter:
     
     router = APIRouter()
 
-    @router.get("")
+    @router.get("/mcp")
     async def mcp_get_handler():
         """Handle GET requests to MCP root - capabilities endpoint"""
         return JSONResponse({
@@ -63,7 +63,7 @@ def create_mcp_router(tool_handler: ToolHandler) -> APIRouter:
             }
         })
 
-    @router.post("")
+    @router.post("/mcp")
     async def mcp_post_handler(request: Request):
         """Handle POST requests - MCP JSON-RPC messages"""
         try:
