@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test server with new Streamable HTTP MCP implementation
+Universal Tool Server with Streamable HTTP MCP support for deployment
 """
 
 from universal_tool_server import Server
@@ -22,7 +22,7 @@ async def add(x: int, y: int) -> int:
 @app.add_tool()
 async def say_hello() -> str:
     """Say hello message."""
-    return "Hello from Streamable HTTP Universal Tool Server!"
+    return "Hello from Universal Tool Server with Streamable HTTP MCP!"
 
 @app.add_tool()
 async def multiply(x: float, y: float) -> float:

@@ -1,3 +1,2 @@
 universal-tool-server>=0.0.3
-mcp>=1.13.0
 uvicorn>=0.34.0

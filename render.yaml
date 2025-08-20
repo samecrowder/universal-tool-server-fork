@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: universal-tool-server-streamable
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python streamable_http_server.py
+    plan: free
