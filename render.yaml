@@ -3,5 +3,5 @@ services:
     name: universal-tool-server-mcp
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python render_server.py
+    startCommand: python fixed_render_server.py
     plan: free
