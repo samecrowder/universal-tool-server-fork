@@ -1,2 +1,5 @@
-universal-tool-server>=0.0.3
+fastapi>=0.110.0
+langchain-core>=0.2.0
+mcp>=1.13.0
+pydantic>=2.7.2
 uvicorn>=0.34.0
